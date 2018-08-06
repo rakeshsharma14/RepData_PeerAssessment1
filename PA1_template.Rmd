@@ -1,7 +1,7 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
 output: 
-  html_document:
+  html_document: 
     keep_md: true
 ---
 
@@ -10,16 +10,86 @@ output:
 
 
 
-## What is mean total number of steps taken per day?
+```{r}
 
+activity <- read.csv(file = "./activity/activity.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+```
+### Summary of the data
+```{r}
+summary(activity)
+head(activity)
+str(activity)
+
+```
+
+### formatting of the date
+```{r}
+activity$date <- as.Date(as.character(activity$date), "%Y-%m-%d")
+```
+## What is mean total number of steps taken per day?
+```{r}
+library(lubridate)
+by_day <- aggregate(activity$steps ~ activity$date, FUN = sum)
+names(by_day) <- c("day", "sum")
+barplot(height = by_day$sum, names.arg = by_day$day, cex.name = 0.68, las = 3, col = "orange")
+
+# calculate the mean and median
+mean <- mean(by_day$sum)
+median <- median(by_day$sum)
+as.table(c(mean, median))
+```
 
 
 ## What is the average daily activity pattern?
+```{r}
+library(dplyr)
+average_by_interval <- activity %>% group_by(interval) %>% summarise(average = mean(steps, na.rm = TRUE))
+plot(x = average_by_interval$interval, y = average_by_interval$average, type = "l", col = "red", xaxt = "n", xlab = "Intervals", ylab = "Average number of days")
 
 
+max_numb_steps_interval <- filter(average_by_interval,average == max(average))
+```
 
 ## Imputing missing values
+```{r}
+na_number <- sum(is.na(activity$steps))
+na_number
+percentage_na <- mean(is.na(activity$steps))
+percentage_na
+
+# mutatting by index
+indexes <- which(is.na(activity$steps) == TRUE)
+activity_without_na <- data.frame(activity)
+head(activity_without_na)
+activity_without_na[indexes, ]$steps <- mean(activity$steps, na.rm = TRUE)
+
+# checking if any step is still NA
+any(is.na(activity_without_na$steps))
 
 
+by_day <- aggregate(activity_without_na$steps ~ activity$date, FUN = sum)
+names(by_day) <- c("day", "sum")
+barplot(height = by_day$sum, names.arg = by_day$day, cex.name = 0.68, las = 3, col = "orange")
 
+# calculate the mean and median
+mean <- mean(by_day$sum)
+median <- median(by_day$sum)
+as.table(c(mean, median))
+```
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+activity_without_na$day_type <- ifelse(wday(activity_without_na$date, label = TRUE) %in% c("Sat", "Sun"), "weekend", "weekday")
+
+library(ggplot2)
+# grouping by data
+by_interval_day_type<- activity_without_na %>% group_by(interval, day_type) %>% summarise(average = mean(steps))
+
+# plotting for comparison
+par(mfrow= c(2, 1))
+weekday <- subset(by_interval_day_type, day_type == "weekday")
+weekend <- subset(by_interval_day_type, day_type == "weekend")
+plot(weekday$interval, weekday$average, type = "l", xlab = "interval", ylab = "number of steps", col = "blue", main = "weekday")
+plot(weekend$interval, weekend$average, type = "l", xlab = "interval", ylab = "number of steps", col = "blue", main = "weekend")
+```
+
+
